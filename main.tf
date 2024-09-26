@@ -7,7 +7,7 @@ data "aws_iam_role" "lab_role" {
 }
 
 resource "aws_ecr_repository" "ecr_fast_food" {
-  name                 = "ecr-fast-food-repo"
+  name                 = "pos-fiap-schepis/fast-food-api"
   image_tag_mutability = "MUTABLE"
   image_scanning_configuration {
     scan_on_push = true
@@ -231,7 +231,7 @@ resource "aws_eks_cluster" "eks" {
 }
 
 resource "aws_eks_node_group" "node_group" {
-  count = 2
+  count = 1
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "node-group-${count.index + 1}"
   node_role_arn = data.aws_iam_role.lab_role.arn
