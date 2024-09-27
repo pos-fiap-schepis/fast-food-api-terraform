@@ -26,8 +26,6 @@ output "ecr_repository_url" {
 resource "aws_cognito_user_pool" "user_pool" {
   name = "${var.cluster_name}-user-pool"
 
-  auto_verified_attributes = ["email"]
-
   password_policy {
     minimum_length    = 8
     require_lowercase = true
@@ -36,8 +34,10 @@ resource "aws_cognito_user_pool" "user_pool" {
     require_uppercase = true
   }
 
+  auto_verified_attributes = []
+
   admin_create_user_config {
-    allow_admin_create_user_only = true
+    allow_admin_create_user_only = false
   }
 
   tags = {
@@ -48,7 +48,17 @@ resource "aws_cognito_user_pool" "user_pool" {
 resource "aws_cognito_user_pool_client" "user_pool_client" {
   user_pool_id = aws_cognito_user_pool.user_pool.id
   name         = "${var.cluster_name}-user-pool-client"
-  generate_secret = false
+
+  explicit_auth_flows = [
+    "ADMIN_NO_SRP_AUTH"
+  ]
+
+  allowed_oauth_flows = ["implicit"]
+  allowed_oauth_scopes = ["openid"]
+
+  callback_urls = ["https://www.example.com/callback"]
+
+  generate_secret = true
 }
 
 resource "aws_api_gateway_rest_api" "api_gateway" {
