@@ -9,6 +9,7 @@ data "aws_iam_role" "lab_role" {
 resource "aws_ecr_repository" "ecr_fast_food" {
   name                 = "pos-fiap-schepis/fast-food-api"
   image_tag_mutability = "MUTABLE"
+  force_delete = true
   image_scanning_configuration {
     scan_on_push = true
   }
@@ -86,6 +87,9 @@ resource "aws_api_gateway_integration" "get_integration" {
 
 resource "aws_vpc" "eks_vpc" {
   cidr_block = "10.0.0.0/16"
+
+  enable_dns_support = true
+  enable_dns_hostnames = true
 
   tags = {
     Name = "eks-vpc"
@@ -183,10 +187,11 @@ resource "aws_db_instance" "postgres" {
   instance_class       = "db.t3.micro"
   username             = "postgres"
   password             = "postgres"
+  db_name              = "fastfood"
   parameter_group_name = "default.postgres16"
   db_subnet_group_name = aws_db_subnet_group.rds_subnet.name
   skip_final_snapshot  = true
-  publicly_accessible  = false
+  publicly_accessible  = true 
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
   tags = {
@@ -202,7 +207,7 @@ resource "aws_security_group" "rds_sg" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -216,7 +221,6 @@ resource "aws_security_group" "rds_sg" {
     Name = "rds-security-group"
   }
 }
-
 resource "aws_eks_cluster" "eks" {
   name     = var.cluster_name
   version  = "1.30"
@@ -252,7 +256,7 @@ resource "aws_eks_node_group" "node_group" {
 
 resource "aws_db_subnet_group" "rds_subnet" {
   name       = "rds-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  subnet_ids = aws_subnet.public[*].id
 
   tags = {
     Name = "rds-subnet-group"
