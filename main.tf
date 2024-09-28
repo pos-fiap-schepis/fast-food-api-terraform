@@ -336,7 +336,7 @@ resource "aws_lb_target_group_attachment" "tg_attachment" {
   count            = length(data.aws_instances.available_instances.ids)
   target_group_arn = aws_lb_target_group.api_gateway_target_group.arn
   target_id        = element(data.aws_instances.available_instances.ids, count.index)
-  port             = 80
+  port             = 30080
 }
 
 # ALB Target Group for EKS Service
@@ -347,7 +347,7 @@ resource "aws_lb_target_group" "api_gateway_target_group" {
   vpc_id   = aws_vpc.eks_vpc.id
 
   health_check {
-    path                = "/health"
+    path                = "/actuator/health/readiness"
     protocol            = "HTTP"
     matcher             = "200"
     interval            = 30
