@@ -6,4 +6,3 @@
 4) terraform apply plan.tfplan
 
 
-
