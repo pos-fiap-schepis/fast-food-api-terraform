@@ -236,7 +236,7 @@ resource "aws_eks_cluster" "eks" {
   role_arn = data.aws_iam_role.lab_role.arn
 
   vpc_config {
-    subnet_ids = aws_subnet.public[*].id
+    subnet_ids = aws_subnet.private[*].id
   }
 
   tags = {
@@ -248,7 +248,7 @@ resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "node-group"
   node_role_arn   = data.aws_iam_role.lab_role.arn
-  subnet_ids      = aws_subnet.public[*].id
+  subnet_ids      = aws_subnet.private[*].id
 
   scaling_config {
     desired_size = 2
