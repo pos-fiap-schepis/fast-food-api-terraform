@@ -9,7 +9,7 @@ data "aws_iam_role" "lab_role" {
 resource "aws_ecr_repository" "ecr_fast_food" {
   name                 = "pos-fiap-schepis/fast-food-api"
   image_tag_mutability = "MUTABLE"
-  force_delete = true
+  force_delete         = true
   image_scanning_configuration {
     scan_on_push = true
   }
@@ -20,7 +20,7 @@ resource "aws_ecr_repository" "ecr_fast_food" {
 }
 
 output "ecr_repository_url" {
-  value = aws_ecr_repository.ecr_fast_food.repository_url
+  value       = aws_ecr_repository.ecr_fast_food.repository_url
   description = "The URL of the ECR repository"
 }
 
@@ -35,12 +35,6 @@ resource "aws_cognito_user_pool" "user_pool" {
     require_uppercase = true
   }
 
-  auto_verified_attributes = []
-
-  admin_create_user_config {
-    allow_admin_create_user_only = false
-  }
-
   tags = {
     Name = "${var.cluster_name}-user-pool"
   }
@@ -50,9 +44,7 @@ resource "aws_cognito_user_pool_client" "user_pool_client" {
   user_pool_id = aws_cognito_user_pool.user_pool.id
   name         = "${var.cluster_name}-user-pool-client"
 
-  explicit_auth_flows = [
-    "ADMIN_NO_SRP_AUTH"
-  ]
+  explicit_auth_flows = ["ADMIN_NO_SRP_AUTH"]
 
   allowed_oauth_flows = ["implicit"]
   allowed_oauth_scopes = ["openid"]
@@ -96,9 +88,8 @@ resource "aws_api_gateway_integration" "get_integration" {
 }
 
 resource "aws_vpc" "eks_vpc" {
-  cidr_block = "10.0.0.0/16"
-
-  enable_dns_support = true
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
@@ -115,8 +106,8 @@ resource "aws_internet_gateway" "igw" {
 }
 
 resource "aws_subnet" "private" {
-  count = 3
-  vpc_id     = aws_vpc.eks_vpc.id
+  count  = 3
+  vpc_id = aws_vpc.eks_vpc.id
   cidr_block = element(["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"], count.index)
   availability_zone = element(["us-east-1a", "us-east-1b", "us-east-1c"], count.index)
 
@@ -126,8 +117,8 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_subnet" "public" {
-  count = 3
-  vpc_id     = aws_vpc.eks_vpc.id
+  count  = 3
+  vpc_id = aws_vpc.eks_vpc.id
   cidr_block = element(["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"], count.index)
   availability_zone = element(["us-east-1a", "us-east-1b", "us-east-1c"], count.index)
 
@@ -150,14 +141,18 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public_association" {
-  count = 3
-  subnet_id      = aws_subnet.public[count.index].id
+  count     = 3
+  subnet_id = aws_subnet.public[
+  count.index
+  ].id
   route_table_id = aws_route_table.public.id
 }
 
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public[0].id
+  subnet_id     = aws_subnet.public[
+  0
+  ].id
 
   tags = {
     Name = "eks-nat-gateway"
@@ -182,11 +177,12 @@ resource "aws_route_table" "private" {
 }
 
 resource "aws_route_table_association" "private_association" {
-  count = 3
-  subnet_id      = aws_subnet.private[count.index].id
+  count     = 3
+  subnet_id = aws_subnet.private[
+  count.index
+  ].id
   route_table_id = aws_route_table.private.id
 }
-
 
 resource "aws_db_instance" "postgres" {
   allocated_storage    = 20
@@ -201,8 +197,10 @@ resource "aws_db_instance" "postgres" {
   parameter_group_name = "default.postgres16"
   db_subnet_group_name = aws_db_subnet_group.rds_subnet.name
   skip_final_snapshot  = true
-  publicly_accessible  = true 
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  publicly_accessible  = true
+  vpc_security_group_ids = [
+    aws_security_group.rds_sg.id
+  ]
 
   tags = {
     Name = "postgres-db"
@@ -210,20 +208,20 @@ resource "aws_db_instance" "postgres" {
 }
 
 resource "aws_security_group" "rds_sg" {
-  name        = "rds-security-group"
-  vpc_id      = aws_vpc.eks_vpc.id
+  name   = "rds-security-group"
+  vpc_id = aws_vpc.eks_vpc.id
 
   ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
+    from_port = 5432
+    to_port   = 5432
+    protocol  = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -231,10 +229,12 @@ resource "aws_security_group" "rds_sg" {
     Name = "rds-security-group"
   }
 }
+
 resource "aws_eks_cluster" "eks" {
   name     = var.cluster_name
   version  = "1.30"
   role_arn = data.aws_iam_role.lab_role.arn
+
   vpc_config {
     subnet_ids = aws_subnet.private[*].id
   }
@@ -245,11 +245,10 @@ resource "aws_eks_cluster" "eks" {
 }
 
 resource "aws_eks_node_group" "node_group" {
-  count = 1
   cluster_name    = aws_eks_cluster.eks.name
-  node_group_name = "node-group-${count.index + 1}"
-  node_role_arn = data.aws_iam_role.lab_role.arn
-  subnet_ids = aws_subnet.private[*].id
+  node_group_name = "node-group"
+  node_role_arn   = data.aws_iam_role.lab_role.arn
+  subnet_ids      = aws_subnet.private[*].id
 
   scaling_config {
     desired_size = 2
@@ -260,7 +259,7 @@ resource "aws_eks_node_group" "node_group" {
   instance_types = ["t3.small"]
 
   tags = {
-    Name = "node-group-${count.index + 1}"
+    Name = "node-group"
   }
 }
 
@@ -273,3 +272,84 @@ resource "aws_db_subnet_group" "rds_subnet" {
   }
 }
 
+# ALB Security Group
+resource "aws_security_group" "alb_sg" {
+  name   = "alb-security-group"
+  vpc_id = aws_vpc.eks_vpc.id
+
+  ingress {
+    from_port = 80
+    to_port   = 80
+    protocol  = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "alb-security-group"
+  }
+}
+
+# Application Load Balancer (ALB)
+resource "aws_lb" "api_gateway_lb" {
+  name               = "${var.cluster_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups = [aws_security_group.alb_sg.id]
+  subnets            = aws_subnet.public[*].id
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "${var.cluster_name}-alb"
+  }
+}
+
+# ALB Listener
+resource "aws_lb_listener" "api_gateway_listener" {
+  load_balancer_arn = aws_lb.api_gateway_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api_gateway_target_group.arn
+  }
+}
+
+# ALB Target Group for EKS Service
+resource "aws_lb_target_group" "api_gateway_target_group" {
+  name     = "${var.cluster_name}-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.eks_vpc.id
+
+  health_check {
+    path                = "/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-tg"
+  }
+}
+
+resource "aws_api_gateway_integration" "alb_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api_gateway.id
+  resource_id             = aws_api_gateway_resource.resource.id
+  http_method             = aws_api_gateway_method.get_method.http_method
+  type                    = "HTTP"
+  integration_http_method = "GET"
+  uri                     = "https://${aws_lb.api_gateway_lb.dns_name}/"
+}
