@@ -236,7 +236,7 @@ resource "aws_eks_cluster" "eks" {
   role_arn = data.aws_iam_role.lab_role.arn
 
   vpc_config {
-    subnet_ids = aws_subnet.private[*].id
+    subnet_ids = aws_subnet.public[*].id
   }
 
   tags = {
@@ -248,7 +248,7 @@ resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "node-group"
   node_role_arn   = data.aws_iam_role.lab_role.arn
-  subnet_ids      = aws_subnet.private[*].id
+  subnet_ids      = aws_subnet.public[*].id
 
   scaling_config {
     desired_size = 2
@@ -321,6 +321,22 @@ resource "aws_lb_listener" "api_gateway_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api_gateway_target_group.arn
   }
+}
+
+# Fetch all available instances
+data "aws_instances" "available_instances" {
+  filter {
+    name   = "instance-state-name"
+    values = ["running"]
+  }
+}
+
+# Attach instances to the target group
+resource "aws_lb_target_group_attachment" "tg_attachment" {
+  count            = length(data.aws_instances.available_instances.ids)
+  target_group_arn = aws_lb_target_group.api_gateway_target_group.arn
+  target_id        = element(data.aws_instances.available_instances.ids, count.index)
+  port             = 80
 }
 
 # ALB Target Group for EKS Service
