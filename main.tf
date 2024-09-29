@@ -272,7 +272,6 @@ resource "aws_db_subnet_group" "rds_subnet" {
   }
 }
 
-# ALB Security Group
 resource "aws_security_group" "alb_sg" {
   name   = "alb-security-group"
   vpc_id = aws_vpc.eks_vpc.id
@@ -296,7 +295,6 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# Application Load Balancer (ALB)
 resource "aws_lb" "api_gateway_lb" {
   name               = "${var.cluster_name}-alb"
   internal           = false
@@ -311,7 +309,6 @@ resource "aws_lb" "api_gateway_lb" {
   }
 }
 
-# ALB Listener
 resource "aws_lb_listener" "api_gateway_listener" {
   load_balancer_arn = aws_lb.api_gateway_lb.arn
   port              = 80
@@ -323,7 +320,6 @@ resource "aws_lb_listener" "api_gateway_listener" {
   }
 }
 
-# Fetch all available instances
 data "aws_instances" "available_instances" {
   filter {
     name   = "instance-state-name"
@@ -331,7 +327,6 @@ data "aws_instances" "available_instances" {
   }
 }
 
-# Attach instances to the target group
 resource "aws_lb_target_group_attachment" "tg_attachment" {
   count            = length(data.aws_instances.available_instances.ids)
   target_group_arn = aws_lb_target_group.api_gateway_target_group.arn
@@ -339,7 +334,6 @@ resource "aws_lb_target_group_attachment" "tg_attachment" {
   port             = 30080
 }
 
-# ALB Target Group for EKS Service
 resource "aws_lb_target_group" "api_gateway_target_group" {
   name     = "${var.cluster_name}-tg"
   port     = 80
