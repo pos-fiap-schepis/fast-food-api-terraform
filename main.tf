@@ -205,6 +205,14 @@ resource "aws_db_instance" "postgres" {
   tags = {
     Name = "postgres-db"
   }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      psql -h ${self.endpoint} -U postgres -c "CREATE DATABASE pedido;"
+      psql -h ${self.endpoint} -U postgres -c "CREATE DATABASE cliente;"
+    EOT
+  }
+
 }
 
 resource "aws_security_group" "rds_sg" {
