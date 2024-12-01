@@ -256,7 +256,7 @@ resource "aws_eks_node_group" "node_group" {
     min_size     = 1
   }
 
-  instance_types = ["t3.small"]
+  instance_types = ["t3.large"]
 
   tags = {
     Name = "node-group"
@@ -362,4 +362,106 @@ resource "aws_api_gateway_integration" "alb_integration" {
   type                    = "HTTP"
   integration_http_method = "GET"
   uri                     = "https://${aws_lb.api_gateway_lb.dns_name}/"
+}
+
+data "aws_eks_cluster_auth" "eks_auth" {
+  name = aws_eks_cluster.eks.name
+}
+
+provider "kubernetes" {
+  host                   = aws_eks_cluster.eks.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.eks.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.eks_auth.token
+}
+
+
+resource "kubernetes_deployment" "sonarqube" {
+  metadata {
+    name = "sonarqube"
+    labels = {
+      app = "sonarqube"
+    }
+  }
+
+  spec {
+    replicas = 1
+    selector {
+      match_labels = {
+        app = "sonarqube"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "sonarqube"
+        }
+      }
+
+      spec {
+        container {
+          name  = "sonarqube"
+          image = "sonarqube:lts"
+
+          port {
+            container_port = 9000
+          }
+
+          env {
+            name  = "SONAR_ES_BOOTSTRAP_CHECKS_DISABLE"
+            value = "true"
+          }
+
+          resources {
+            requests = {
+              memory = "2Gi"
+              cpu    = "1"
+            }
+            limits = {
+              memory = "4Gi"
+              cpu    = "2"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "sonarqube" {
+  metadata {
+    name = "sonarqube"
+  }
+
+  spec {
+    selector = {
+      app = "sonarqube"
+    }
+
+    port {
+      protocol = "TCP"
+      port     = 9000
+      target_port = 9000
+    }
+
+    type = "LoadBalancer"
+  }
+}
+
+data "kubernetes_service" "sonarqube" {
+  metadata {
+    name      = "sonarqube"
+    namespace = "default"
+  }
+  depends_on = [kubernetes_service.sonarqube]
+}
+
+output "sonarqube_load_balancer_dns" {
+  value = data.kubernetes_service.sonarqube.status[0].load_balancer[0].ingress[0].hostname
+  description = "The DNS name of the SonarQube LoadBalancer"
+}
+
+output "sonarqube_load_balancer_ip" {
+  value = data.kubernetes_service.sonarqube.status[0].load_balancer[0].ingress[0].ip
+  description = "The IP address of the SonarQube LoadBalancer"
 }
