@@ -42,7 +42,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve plan.tfplan
 
-      - name: Extract RDS Endpoint
+      - name: Extract RDS Endpoint 
         id: rds_endpoint
         run: |
           RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
