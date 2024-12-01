@@ -48,7 +48,12 @@ jobs:
           RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
           echo "RDS_ENDPOINT=$RDS_ENDPOINT" >> $GITHUB_ENV
 
-      - name: Create Databases in RDS
+      - name: Create Databases and Schemas in RDS
         run: |
+          echo "Creating databases..."
           PGPASSWORD=postgres psql -h $RDS_ENDPOINT -U postgres -c "CREATE DATABASE pedido;"
           PGPASSWORD=postgres psql -h $RDS_ENDPOINT -U postgres -c "CREATE DATABASE cliente;"
+            
+          echo "Creating schemas in databases..."
+          PGPASSWORD=postgres psql -h $RDS_ENDPOINT -U postgres -d pedido -c "CREATE SCHEMA pedido;"
+          PGPASSWORD=postgres psql -h $RDS_ENDPOINT -U postgres -d cliente -c "CREATE SCHEMA cliente;"
