@@ -42,14 +42,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve plan.tfplan
 
-      - name: Extract RDS Endpoint 
+      - name: Retrieve RDS Endpoint and Update YAML
         id: rds_endpoint
         run: |
-          RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
-          echo "RDS_ENDPOINT=$RDS_ENDPOINT" >> $GITHUB_ENV
-
-      - name: Create Databases and Schemas in RDS
-        run: |
+          RDS_ENDPOINT=$(aws rds describe-db-instances --db-instance-identifier postgres-db-fast-food --query "DBInstances[0].Endpoint.Address" --output text)
+          export RDS_ENDPOINT
           echo "Creating databases..."
           PGPASSWORD=postgres psql -h $RDS_ENDPOINT -U postgres -c "CREATE DATABASE pedido;"
           PGPASSWORD=postgres psql -h $RDS_ENDPOINT -U postgres -c "CREATE DATABASE cliente;"
