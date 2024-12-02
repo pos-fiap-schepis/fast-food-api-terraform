@@ -27,13 +27,43 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      - name: Create S3 Bucket for Terraform State
+        run: |
+          S3_BUCKET_NAME="my-terraform-state-bucket"
+          REGION="us-east-1"
+
+          echo "Checking if S3 bucket $S3_BUCKET_NAME exists..."
+          if aws s3api head-bucket --bucket "$S3_BUCKET_NAME" 2>/dev/null; then
+            echo "S3 bucket $S3_BUCKET_NAME already exists."
+          else
+            echo "Creating S3 bucket $S3_BUCKET_NAME..."
+            aws s3api create-bucket --bucket "$S3_BUCKET_NAME" --region "$REGION" --create-bucket-configuration LocationConstraint="$REGION"
+            echo "S3 bucket $S3_BUCKET_NAME created."
+          fi
+
+          echo "Enabling versioning on S3 bucket $S3_BUCKET_NAME..."
+          aws s3api put-bucket-versioning --bucket "$S3_BUCKET_NAME" --versioning-configuration Status=Enabled
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.9.6
 
-      - name: Terraform Init
-        run: terraform init
+      - name: Configure Terraform Backend
+        run: |
+          cat <<EOF > backend.tf
+          terraform {
+            backend "s3" {
+              bucket         = "my-terraform-state-bucket"
+              key            = "terraform/state/terraform.tfstate"
+              region         = "us-east-1"
+              encrypt        = true
+            }
+          }
+          EOF
+          terraform init -backend-config="bucket=my-terraform-state-bucket" \
+                         -backend-config="key=terraform/state/terraform.tfstate" \
+                         -backend-config="region=us-east-1"
 
       - name: Terraform Plan
         run: terraform plan -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -out=plan.tfplan
