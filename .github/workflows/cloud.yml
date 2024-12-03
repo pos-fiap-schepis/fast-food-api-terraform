@@ -39,7 +39,6 @@ jobs:
         run: terraform plan -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -out=plan.tfplan
 
       - name: Terraform Apply
-        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve plan.tfplan
 
       - name: Retrieve RDS Endpoint and Update YAML
