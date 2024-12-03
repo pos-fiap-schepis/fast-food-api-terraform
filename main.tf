@@ -466,3 +466,87 @@ output "sonarqube_load_balancer_ip" {
   value = data.kubernetes_service.sonarqube.status[0].load_balancer[0].ingress[0].ip
   description = "The IP address of the SonarQube LoadBalancer"
 }
+
+resource "kubernetes_deployment" "mongodb" {
+  metadata {
+    name = "mongodb"
+    labels = {
+      app = "mongodb"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "mongodb"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "mongodb"
+        }
+      }
+
+      spec {
+        container {
+          name  = "mongodb"
+          image = "mongo:5.0"
+
+          port {
+            container_port = 27017
+          }
+
+          env {
+            name  = "MONGO_INITDB_ROOT_USERNAME"
+            value = "admin" # Replace with desired username
+          }
+
+          env {
+            name  = "MONGO_INITDB_ROOT_PASSWORD"
+            value = "password" # Replace with a secure password
+          }
+
+          resources {
+            requests = {
+              memory = "256Mi"
+              cpu    = "100m"
+            }
+            limits = {
+              memory = "512Mi"
+              cpu    = "250m"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "mongodb" {
+  metadata {
+    name = "mongodb"
+  }
+
+  spec {
+    selector = {
+      app = "mongodb"
+    }
+
+    port {
+      protocol = "TCP"
+      port     = 27017
+      target_port = 27017
+    }
+
+    type = "ClusterIP"
+  }
+}
+
+output "mongodb_internal_connection_url" {
+  value       = "mongodb://admin:password@mongodb:27017"
+  description = "MongoDB internal connection URL for POC"
+}
