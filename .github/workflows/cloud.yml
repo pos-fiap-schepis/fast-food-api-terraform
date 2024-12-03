@@ -27,23 +27,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
-      - name: Create S3 Bucket for Terraform State
-        run: |
-          S3_BUCKET_NAME="terraform-state-bucket-schepis"
-          REGION="us-east-1"
-
-          echo "Checking if S3 bucket $S3_BUCKET_NAME exists..."
-          if aws s3api head-bucket --bucket "$S3_BUCKET_NAME" 2>/dev/null; then
-            echo "S3 bucket $S3_BUCKET_NAME already exists."
-          else
-            echo "Creating S3 bucket $S3_BUCKET_NAME..."
-            aws s3api create-bucket --bucket "$S3_BUCKET_NAME" --region "$REGION" --create-bucket-configuration LocationConstraint="$REGION"
-            echo "S3 bucket $S3_BUCKET_NAME created."
-          fi
-
-          echo "Enabling versioning on S3 bucket $S3_BUCKET_NAME..."
-          aws s3api put-bucket-versioning --bucket "$S3_BUCKET_NAME" --versioning-configuration Status=Enabled
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
