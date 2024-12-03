@@ -467,66 +467,86 @@ output "sonarqube_load_balancer_ip" {
   description = "The IP address of the SonarQube LoadBalancer"
 }
 
-resource "aws_docdb_cluster" "docdb_cluster" {
-  cluster_identifier = "docdb-cluster-example"
-  engine             = "docdb"
-  master_username    = "admin" 
-  master_password    = "admin"
-  backup_retention_period = 7
-  preferred_backup_window = "07:00-09:00"
-  db_subnet_group_name = aws_docdb_subnet_group.docdb_subnet.name
-  vpc_security_group_ids = [aws_security_group.docdb_sg.id]
+resource "kubernetes_deployment" "mongodb" {
+  metadata {
+    name = "mongodb"
+    labels = {
+      app = "mongodb"
+    }
+  }
 
-  tags = {
-    Name = "DocumentDB Cluster"
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "mongodb"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "mongodb"
+        }
+      }
+
+      spec {
+        container {
+          name  = "mongodb"
+          image = "mongo:5.0"
+
+          port {
+            container_port = 27017
+          }
+
+          env {
+            name  = "MONGO_INITDB_ROOT_USERNAME"
+            value = "admin" # Replace with desired username
+          }
+
+          env {
+            name  = "MONGO_INITDB_ROOT_PASSWORD"
+            value = "password" # Replace with a secure password
+          }
+
+          resources {
+            requests = {
+              memory = "256Mi"
+              cpu    = "100m"
+            }
+            limits = {
+              memory = "512Mi"
+              cpu    = "250m"
+            }
+          }
+        }
+      }
+    }
   }
 }
 
-resource "aws_docdb_cluster_instance" "docdb_instance" {
-  count               = 1
-  identifier          = "docdb-cluster-instance-${count.index + 1}"
-  cluster_identifier  = aws_docdb_cluster.docdb_cluster.id
-  instance_class      = "db.r5.large"
-}
+resource "kubernetes_service" "mongodb" {
+  metadata {
+    name = "mongodb"
+  }
 
-resource "aws_docdb_subnet_group" "docdb_subnet" {
-  name       = "docdb-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  spec {
+    selector = {
+      app = "mongodb"
+    }
 
-  tags = {
-    Name = "DocumentDB Subnet Group"
+    port {
+      protocol = "TCP"
+      port     = 27017
+      target_port = 27017
+    }
+
+    type = "ClusterIP"
   }
 }
 
-resource "aws_security_group" "docdb_sg" {
-  name   = "docdb-security-group"
-  vpc_id = aws_vpc.eks_vpc.id
-
-  ingress {
-    from_port   = 27017
-    to_port     = 27017
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "DocumentDB Security Group"
-  }
-}
-
-output "docdb_endpoint" {
-  value = aws_docdb_cluster.docdb_cluster.endpoint
-  description = "The endpoint of the DocumentDB cluster"
-}
-
-output "docdb_reader_endpoint" {
-  value = aws_docdb_cluster.docdb_cluster.reader_endpoint
-  description = "The reader endpoint of the DocumentDB cluster"
+output "mongodb_internal_connection_url" {
+  value       = "mongodb://admin:password@mongodb:27017"
+  description = "MongoDB internal connection URL for POC"
 }
