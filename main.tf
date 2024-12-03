@@ -466,3 +466,67 @@ output "sonarqube_load_balancer_ip" {
   value = data.kubernetes_service.sonarqube.status[0].load_balancer[0].ingress[0].ip
   description = "The IP address of the SonarQube LoadBalancer"
 }
+
+resource "aws_docdb_cluster" "docdb_cluster" {
+  cluster_identifier = "docdb-cluster-example"
+  engine             = "docdb"
+  master_username    = "admin" 
+  master_password    = "admin"
+  backup_retention_period = 7
+  preferred_backup_window = "07:00-09:00"
+  db_subnet_group_name = aws_docdb_subnet_group.docdb_subnet.name
+  vpc_security_group_ids = [aws_security_group.docdb_sg.id]
+
+  tags = {
+    Name = "DocumentDB Cluster"
+  }
+}
+
+resource "aws_docdb_cluster_instance" "docdb_instance" {
+  count               = 1
+  identifier          = "docdb-cluster-instance-${count.index + 1}"
+  cluster_identifier  = aws_docdb_cluster.docdb_cluster.id
+  instance_class      = "db.r5.large"
+}
+
+resource "aws_docdb_subnet_group" "docdb_subnet" {
+  name       = "docdb-subnet-group"
+  subnet_ids = aws_subnet.private[*].id
+
+  tags = {
+    Name = "DocumentDB Subnet Group"
+  }
+}
+
+resource "aws_security_group" "docdb_sg" {
+  name   = "docdb-security-group"
+  vpc_id = aws_vpc.eks_vpc.id
+
+  ingress {
+    from_port   = 27017
+    to_port     = 27017
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "DocumentDB Security Group"
+  }
+}
+
+output "docdb_endpoint" {
+  value = aws_docdb_cluster.docdb_cluster.endpoint
+  description = "The endpoint of the DocumentDB cluster"
+}
+
+output "docdb_reader_endpoint" {
+  value = aws_docdb_cluster.docdb_cluster.reader_endpoint
+  description = "The reader endpoint of the DocumentDB cluster"
+}
