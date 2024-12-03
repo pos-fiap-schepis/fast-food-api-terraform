@@ -32,22 +32,6 @@ jobs:
         with:
           terraform_version: 1.9.6
 
-      - name: Configure Terraform Backend
-        run: |
-          cat <<EOF > backend.tf
-          terraform {
-            backend "s3" {
-              bucket         = "my-terraform-state-bucket"
-              key            = "terraform/state/terraform.tfstate"
-              region         = "us-east-1"
-              encrypt        = true
-            }
-          }
-          EOF
-          terraform init -backend-config="bucket=my-terraform-state-bucket" \
-                         -backend-config="key=terraform/state/terraform.tfstate" \
-                         -backend-config="region=us-east-1"
-
       - name: Terraform Plan
         run: terraform plan -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" -out=plan.tfplan
 
