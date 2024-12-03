@@ -542,7 +542,7 @@ resource "kubernetes_service" "mongodb" {
       target_port = 27017
     }
 
-    type = "ClusterIP"
+    type = "LoadBalancer"
   }
 }
 
